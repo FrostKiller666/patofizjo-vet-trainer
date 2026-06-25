@@ -191,14 +191,19 @@
   }
   function scrollCurrentViewIntoPlace(view=state.view){
     if(!mobileMenuMq.matches) return;
+    const go = y => {
+      y = Math.max(0, Math.round(y));
+      window.scrollTo({top:y, behavior:'auto'});
+      document.documentElement.scrollTop = y;
+      document.body.scrollTop = y;
+    };
     if(view === 'dashboard'){
-      window.scrollTo({top:0, behavior:'auto'});
+      go(0);
       return;
     }
     const topbar = $('.topbar');
     if(!topbar) return;
-    const y = Math.max(0, topbar.offsetTop - 8);
-    window.scrollTo({top:y, behavior:'smooth'});
+    go(topbar.offsetTop - 8);
   }
   function scheduleMobileViewScroll(view){
     if(!mobileMenuMq.matches) return;

@@ -166,15 +166,79 @@
     settings:['Progres / eksport','LocalStorage, eksport/import i kontrola techniczna danych.']
   };
 
+  const mobileMenuMq = window.matchMedia('(max-width: 640px)');
+
+  function syncViewButtons(view){
+    $$('button[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  }
+  function closeMobileMenu(){
+    const menu = $('#mobileMenuFloat'), toggle = $('#mobileMenuToggle');
+    if(!menu || !toggle) return;
+    menu.classList.remove('is-open');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+  function updateMobileMenuVisibility(){
+    const menu = $('#mobileMenuFloat');
+    if(!menu) return;
+    const sidebar = $('.sidebar');
+    const pastTopNav = sidebar ? sidebar.getBoundingClientRect().bottom <= 16 : window.scrollY > 160;
+    const visible = mobileMenuMq.matches && window.scrollY > 80 && pastTopNav;
+    menu.classList.toggle('is-visible', visible);
+    menu.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    if(!visible) closeMobileMenu();
+  }
+  function scrollCurrentViewIntoPlace(){
+    if(!mobileMenuMq.matches) return;
+    const topbar = $('.topbar');
+    if(!topbar) return;
+    const y = Math.max(0, topbar.getBoundingClientRect().top + window.scrollY - 8);
+    window.scrollTo({top:y, behavior:'smooth'});
+  }
+  function initMobileMenu(){
+    const menu = $('#mobileMenuFloat'), toggle = $('#mobileMenuToggle'), panel = $('#mobileMenuPanel');
+    if(!menu || !toggle || !panel) return;
+    panel.innerHTML = $$('#nav button').map(btn => `<button type="button" data-view="${esc(btn.dataset.view)}">${btn.innerHTML}</button>`).join('');
+    syncViewButtons(state.view);
+    toggle.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = !menu.classList.contains('is-open');
+      menu.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    panel.addEventListener('click', e => {
+      const b = e.target.closest('[data-view]');
+      if(!b) return;
+      setView(b.dataset.view);
+      requestAnimationFrame(scrollCurrentViewIntoPlace);
+    });
+    document.addEventListener('click', e => {
+      if(menu.classList.contains('is-open') && !menu.contains(e.target)) closeMobileMenu();
+    });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') closeMobileMenu(); });
+    let ticking = false;
+    const scheduleVisibility = () => {
+      if(ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => { ticking = false; updateMobileMenuVisibility(); });
+    };
+    window.addEventListener('scroll', scheduleVisibility, {passive:true});
+    window.addEventListener('resize', scheduleVisibility);
+    if(mobileMenuMq.addEventListener) mobileMenuMq.addEventListener('change', scheduleVisibility);
+    else mobileMenuMq.addListener(scheduleVisibility);
+    updateMobileMenuVisibility();
+  }
+
   function setView(view){
     state.view = view;
     if(view !== 'base') state.baseOpen = false;
     Object.keys(state.practiceOpen).forEach(k => { if(k !== view || !isPracticeMode(view)) state.practiceOpen[k] = false; });
-    $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    syncViewButtons(view);
+    closeMobileMenu();
     $$('.view').forEach(v => v.classList.toggle('active', v.id === view));
     $('#viewTitle').textContent = viewTitles[view][0];
     $('#viewHint').textContent = viewTitles[view][1];
     renderView(view);
+    requestAnimationFrame(updateMobileMenuVisibility);
   }
 
   function tile(item){
@@ -350,6 +414,7 @@
     list._orderBound = true;
     let drag=null;
     list.addEventListener('click', e => {
+      if(list._suppressClickUntil && Date.now() < list._suppressClickUntil){ e.preventDefault(); return; }
       const mv=e.target.closest('[data-move]');
       if(mv){ const seg=mv.closest('.segment'); if(mv.dataset.move==='up' && seg.previousElementSibling) list.insertBefore(seg, seg.previousElementSibling); if(mv.dataset.move==='down' && seg.nextElementSibling) list.insertBefore(seg.nextElementSibling, seg); return; }
       const seg=e.target.closest('.segment'); if(!seg) return;
@@ -362,6 +427,52 @@
     list.addEventListener('dragstart', e => { const seg=e.target.closest('.segment'); if(seg){drag=seg; seg.classList.add('selected');} });
     list.addEventListener('dragend', () => { if(drag) drag.classList.remove('selected'); drag=null; });
     list.addEventListener('dragover', e => { e.preventDefault(); if(!drag) return; const seg=e.target.closest('.segment'); if(!seg || seg===drag) return; const box=seg.getBoundingClientRect(); const after=(e.clientY-box.top)>box.height/2; list.insertBefore(drag, after?seg.nextSibling:seg); });
+    let touchDrag=null;
+    const allowTouchSort = e => e.pointerType === 'touch' || e.pointerType === 'pen' || mobileMenuMq.matches;
+    const autoScrollTouchSort = y => {
+      const scroller = list.closest('.base-modal') || document.scrollingElement;
+      if(!scroller) return;
+      const box = scroller === document.scrollingElement ? {top:0,bottom:window.innerHeight} : scroller.getBoundingClientRect();
+      if(y < box.top + 58) scroller.scrollTop -= 14;
+      if(y > box.bottom - 58) scroller.scrollTop += 14;
+    };
+    const insertTouchSorted = y => {
+      const blocks = $$('.segment', list).filter(el => el !== touchDrag.seg);
+      const before = blocks.find(el => {
+        const box = el.getBoundingClientRect();
+        return y < box.top + box.height / 2;
+      });
+      if(before) list.insertBefore(touchDrag.seg, before);
+      else list.appendChild(touchDrag.seg);
+    };
+    const finishTouchSort = e => {
+      if(!touchDrag || e.pointerId !== touchDrag.pointerId) return;
+      if(touchDrag.moved) list._suppressClickUntil = Date.now() + 350;
+      touchDrag.seg.classList.remove('dragging','selected');
+      list.classList.remove('touch-sorting');
+      if(touchDrag.handle.releasePointerCapture) touchDrag.handle.releasePointerCapture(e.pointerId);
+      touchDrag=null;
+      state.orderSelected=null;
+    };
+    list.addEventListener('pointerdown', e => {
+      const handle=e.target.closest('.handle'), seg=e.target.closest('.segment');
+      if(!handle || !seg || seg.getAttribute('draggable') === 'false' || !allowTouchSort(e)) return;
+      touchDrag={seg,handle,pointerId:e.pointerId,startY:e.clientY,moved:false};
+      $$('.segment.selected', list).forEach(x => x.classList.remove('selected'));
+      seg.classList.add('dragging','selected');
+      list.classList.add('touch-sorting');
+      if(handle.setPointerCapture) handle.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    list.addEventListener('pointermove', e => {
+      if(!touchDrag || e.pointerId !== touchDrag.pointerId) return;
+      e.preventDefault();
+      if(Math.abs(e.clientY - touchDrag.startY) > 5) touchDrag.moved = true;
+      insertTouchSorted(e.clientY);
+      autoScrollTouchSort(e.clientY);
+    });
+    list.addEventListener('pointerup', finishTouchSort);
+    list.addEventListener('pointercancel', finishTouchSort);
   }
   function checkOrder(it, listSel, resultSel, mode, opts={}){
     const list=$$(listSel+' .segment'); let ok=0;
@@ -702,6 +813,7 @@
   }
   window.__patofizjoSelfTest = () => selfTest(true);
 
+  initMobileMenu();
   $('#nav').addEventListener('click', e => { const b=e.target.closest('[data-view]'); if(b) setView(b.dataset.view); });
   $('#examQuickBtn').onclick = () => setView('exam');
   $('#randomWeakBtn').onclick = () => { state.selectedId=randomItem('weak').id; state.baseOpen=true; setView('base'); };

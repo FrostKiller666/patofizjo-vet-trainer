@@ -912,6 +912,7 @@
     if(v==='exam') examView();
     if(v==='weak') weakView();
     if(v==='settings') settingsView();
+    updateMobileMenuVisibility();
     requestAnimationFrame(updateMobileMenuVisibility);
   }
 

@@ -197,10 +197,17 @@
     });
     panel.addEventListener('click', e => {
       const b = e.target.closest('[data-view]');
-      if(!b) return;
+      if(!b){
+        setOpen(false);
+        return;
+      }
       b.blur();
       setOpen(false);
       setView(b.dataset.view);
+    });
+    root.addEventListener('click', e => {
+      if(!controls.classList.contains('is-open') || controls.contains(e.target)) return;
+      setOpen(false);
     });
   }
   function closeMobileMenu(){

@@ -216,7 +216,9 @@
   function updateMobileMenuVisibility(){
     const menu = $('#mobileMenuFloat');
     if(!menu) return;
-    document.body.classList.toggle('question-modal-open', !!$('.view.active .modal-backdrop'));
+    const questionModalOpen = !!$('.view.active .modal-backdrop');
+    document.documentElement.classList.toggle('question-modal-open', questionModalOpen);
+    document.body.classList.toggle('question-modal-open', questionModalOpen);
     parkMobileMenu();
     menu.classList.remove('is-modal-open','is-visible');
     menu.setAttribute('aria-hidden', 'true');

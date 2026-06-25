@@ -171,6 +171,38 @@
   function syncViewButtons(view){
     $$('button[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   }
+  function navButtonsHtml(){
+    return $$('#nav button').map(btn => `<button type="button" data-view="${esc(btn.dataset.view)}">${btn.innerHTML}</button>`).join('');
+  }
+  function modalControls(closeId){
+    return `<div class="modal-controls">
+      <button class="modal-menu-toggle" type="button" aria-label="Menu" aria-expanded="false">&#9776;</button>
+      <button class="modal-close" id="${closeId}" title="Zamknij">×</button>
+      <div class="modal-menu-panel">${navButtonsHtml()}</div>
+    </div>`;
+  }
+  function bindModalMenu(root){
+    const controls = $('.modal-controls', root);
+    if(!controls) return;
+    const toggle = $('.modal-menu-toggle', controls), panel = $('.modal-menu-panel', controls);
+    if(!toggle || !panel) return;
+    $$('button[data-view]', panel).forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
+    const setOpen = open => {
+      controls.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    toggle.addEventListener('click', e => {
+      e.stopPropagation();
+      setOpen(!controls.classList.contains('is-open'));
+    });
+    panel.addEventListener('click', e => {
+      const b = e.target.closest('[data-view]');
+      if(!b) return;
+      b.blur();
+      setOpen(false);
+      setView(b.dataset.view);
+    });
+  }
   function closeMobileMenu(){
     const menu = $('#mobileMenuFloat'), toggle = $('#mobileMenuToggle');
     if(!menu || !toggle) return;
@@ -181,25 +213,13 @@
     const menu = $('#mobileMenuFloat');
     if(menu && menu.parentElement !== document.body) document.body.appendChild(menu);
   }
-  function placeMobileMenuInModal(modal){
-    const menu = $('#mobileMenuFloat');
-    if(menu && modal && menu.parentElement !== modal) modal.insertBefore(menu, modal.firstChild);
-  }
-  function currentQuestionModal(){
-    return $$('#baseModal, #orderModal, #clozeModal, #mcqModal')
-      .find(modal => modal.closest('.view')?.classList.contains('active'));
-  }
   function updateMobileMenuVisibility(){
     const menu = $('#mobileMenuFloat');
     if(!menu) return;
-    const questionModal = currentQuestionModal();
-    const visible = mobileMenuMq.matches && !!questionModal;
-    if(visible) placeMobileMenuInModal(questionModal);
-    else parkMobileMenu();
-    menu.classList.toggle('is-modal-open', visible);
-    menu.classList.toggle('is-visible', visible);
-    menu.setAttribute('aria-hidden', visible ? 'false' : 'true');
-    if(!visible) closeMobileMenu();
+    parkMobileMenu();
+    menu.classList.remove('is-modal-open','is-visible');
+    menu.setAttribute('aria-hidden', 'true');
+    closeMobileMenu();
   }
   function scrollCurrentViewIntoPlace(view=state.view){
     if(!mobileMenuMq.matches) return;
@@ -229,7 +249,7 @@
   function initMobileMenu(){
     const menu = $('#mobileMenuFloat'), toggle = $('#mobileMenuToggle'), panel = $('#mobileMenuPanel');
     if(!menu || !toggle || !panel) return;
-    panel.innerHTML = $$('#nav button').map(btn => `<button type="button" data-view="${esc(btn.dataset.view)}">${btn.innerHTML}</button>`).join('');
+    panel.innerHTML = navButtonsHtml();
     syncViewButtons(state.view);
     toggle.addEventListener('click', e => {
       e.stopPropagation();
@@ -350,7 +370,7 @@
     const root = $('#base');
     root.innerHTML = `${picker('base')}${state.baseOpen ? `<div class="modal-backdrop" id="baseModal">
       <article class="base-modal" role="dialog" aria-modal="true">
-        <button class="modal-close" id="closeBase" title="Zamknij">×</button>
+        ${modalControls('closeBase')}
         <div class="modal-head">
           <span class="pill ${cls}">${p.score}% — ${lab}</span>
           <h3 class="question-title">${esc(it.question)}</h3>
@@ -369,6 +389,7 @@
     updateMobileMenuVisibility();
     requestAnimationFrame(updateMobileMenuVisibility);
     if(!state.baseOpen) return;
+    bindModalMenu(root);
     $('#closeBase').onclick = () => { state.baseOpen=false; fullBase(); };
     $('#baseModal').onclick = e => { if(e.target.id === 'baseModal'){ state.baseOpen=false; fullBase(); } };
     $('#toggleAnswer').onclick = () => { const a=$('#answerBox'); a.classList.toggle('hidden'); $('#toggleAnswer').textContent = a.classList.contains('hidden') ? 'Pokaż pełną odpowiedź' : 'Ukryj odpowiedź'; };
@@ -394,7 +415,7 @@
     if(!state.practiceOpen.order){ root.innerHTML = picker('order'); bindPicker(root,'order'); return; }
     root.innerHTML = `${picker('order')}<div class="modal-backdrop" id="orderModal">
       <article class="base-modal task-modal" role="dialog" aria-modal="true">
-        <button class="modal-close" id="closeOrder" title="Zamknij">×</button>
+        ${modalControls('closeOrder')}
         <div class="modal-head">
           <h3 class="question-title">${esc(it.question)}</h3>
           <p class="small">Ustaw bloki w kolejności. Możesz używać strzałek ↑ ↓, kliknąć dwa bloki aby je zamienić, albo przeciągać myszą.</p>
@@ -404,7 +425,7 @@
         <div id="orderResult" class="footer-note"></div>
       </article>
     </div>`;
-    bindPicker(root,'order'); bindOrderList($('#segments'));
+    bindPicker(root,'order'); bindModalMenu(root); bindOrderList($('#segments'));
     $('#closeOrder').onclick = () => closePracticeMode('order');
     $('#orderModal').onclick = e => { if(e.target.id === 'orderModal') closePracticeMode('order'); };
     const renderPracticeOrder = () => {
@@ -650,7 +671,7 @@
     if(!state.practiceOpen.cloze){ root.innerHTML = picker('cloze'); bindPicker(root,'cloze'); return; }
     root.innerHTML = `${picker('cloze')}<div class="modal-backdrop" id="clozeModal">
       <article class="base-modal task-modal" role="dialog" aria-modal="true">
-        <button class="modal-close" id="closeCloze" title="Zamknij">×</button>
+        ${modalControls('closeCloze')}
         <div class="modal-head"><h3 class="question-title">${esc(it.question)}</h3></div>
         <div class="cloze-text">${rendered.html}</div>
         ${clozeRevealButtons(cl, rendered.order, revealed)}
@@ -658,7 +679,7 @@
         <div id="clozeResult" class="footer-note"></div>
       </article>
     </div>`;
-    bindPicker(root,'cloze');
+    bindPicker(root,'cloze'); bindModalMenu(root);
     $('#closeCloze').onclick = () => closePracticeMode('cloze');
     $('#clozeModal').onclick = e => { if(e.target.id === 'clozeModal') closePracticeMode('cloze'); };
     $('#checkCloze').onclick = () => {
@@ -715,7 +736,7 @@
     if(!state.practiceOpen.mcq){ root.innerHTML = picker('mcq'); bindPicker(root,'mcq'); return; }
     root.innerHTML = `${picker('mcq')}<div class="modal-backdrop" id="mcqModal">
       <article class="base-modal task-modal" role="dialog" aria-modal="true">
-        <button class="modal-close" id="closeMcq" title="Zamknij">×</button>
+        ${modalControls('closeMcq')}
         <div class="modal-head">
           <h3 class="question-title">${esc(it.question)}</h3>
           <p><b>${esc(q.prompt)}</b></p>
@@ -725,7 +746,7 @@
         <div id="mcqResult" class="footer-note"></div>
       </article>
     </div>`;
-    bindPicker(root,'mcq');
+    bindPicker(root,'mcq'); bindModalMenu(root);
     $('#closeMcq').onclick = () => closePracticeMode('mcq');
     $('#mcqModal').onclick = e => { if(e.target.id === 'mcqModal') closePracticeMode('mcq'); };
     $('#options').onclick = e => {

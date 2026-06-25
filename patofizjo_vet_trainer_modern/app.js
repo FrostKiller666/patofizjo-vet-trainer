@@ -181,14 +181,20 @@
     const menu = $('#mobileMenuFloat');
     if(!menu) return;
     const sidebar = $('.sidebar');
+    const modalOpen = !!$('.modal-backdrop');
     const pastTopNav = sidebar ? sidebar.getBoundingClientRect().bottom <= 16 : window.scrollY > 160;
-    const visible = mobileMenuMq.matches && window.scrollY > 80 && pastTopNav;
+    const visible = mobileMenuMq.matches && (modalOpen || (window.scrollY > 80 && pastTopNav));
+    menu.classList.toggle('is-modal-open', mobileMenuMq.matches && modalOpen);
     menu.classList.toggle('is-visible', visible);
     menu.setAttribute('aria-hidden', visible ? 'false' : 'true');
     if(!visible) closeMobileMenu();
   }
-  function scrollCurrentViewIntoPlace(){
+  function scrollCurrentViewIntoPlace(view=state.view){
     if(!mobileMenuMq.matches) return;
+    if(view === 'dashboard'){
+      window.scrollTo({top:0, behavior:'smooth'});
+      return;
+    }
     const topbar = $('.topbar');
     if(!topbar) return;
     const y = Math.max(0, topbar.getBoundingClientRect().top + window.scrollY - 8);
@@ -209,7 +215,6 @@
       const b = e.target.closest('[data-view]');
       if(!b) return;
       setView(b.dataset.view);
-      requestAnimationFrame(scrollCurrentViewIntoPlace);
     });
     document.addEventListener('click', e => {
       if(menu.classList.contains('is-open') && !menu.contains(e.target)) closeMobileMenu();
@@ -238,7 +243,10 @@
     $('#viewTitle').textContent = viewTitles[view][0];
     $('#viewHint').textContent = viewTitles[view][1];
     renderView(view);
-    requestAnimationFrame(updateMobileMenuVisibility);
+    requestAnimationFrame(() => {
+      updateMobileMenuVisibility();
+      scrollCurrentViewIntoPlace(view);
+    });
   }
 
   function tile(item){
@@ -413,20 +421,55 @@
     if(!list || list._orderBound) return;
     list._orderBound = true;
     let drag=null;
+    const animateOrderChange = mutate => {
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(reduceMotion){ mutate(); return; }
+      const before = new Map($$('.segment', list).map(el => [el, el.getBoundingClientRect()]));
+      mutate();
+      $$('.segment', list).forEach(el => {
+        const prev = before.get(el);
+        if(!prev) return;
+        const next = el.getBoundingClientRect();
+        const dx = prev.left - next.left, dy = prev.top - next.top;
+        if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        el.getAnimations().forEach(anim => anim.cancel());
+        el.classList.add('moving');
+        const anim = el.animate([
+          {transform:`translate(${dx}px, ${dy}px)`, boxShadow:'0 18px 34px rgba(37,99,235,.16)'},
+          {transform:'translate(0, 0)', boxShadow:''}
+        ], {duration:280, easing:'cubic-bezier(.2,.8,.2,1)'});
+        anim.addEventListener('finish', () => el.classList.remove('moving'));
+        anim.addEventListener('cancel', () => el.classList.remove('moving'));
+      });
+    };
     list.addEventListener('click', e => {
       if(list._suppressClickUntil && Date.now() < list._suppressClickUntil){ e.preventDefault(); return; }
       const mv=e.target.closest('[data-move]');
-      if(mv){ const seg=mv.closest('.segment'); if(mv.dataset.move==='up' && seg.previousElementSibling) list.insertBefore(seg, seg.previousElementSibling); if(mv.dataset.move==='down' && seg.nextElementSibling) list.insertBefore(seg.nextElementSibling, seg); return; }
+      if(mv){
+        const seg=mv.closest('.segment');
+        if(mv.dataset.move==='up' && seg.previousElementSibling) animateOrderChange(() => list.insertBefore(seg, seg.previousElementSibling));
+        if(mv.dataset.move==='down' && seg.nextElementSibling) animateOrderChange(() => list.insertBefore(seg.nextElementSibling, seg));
+        return;
+      }
       const seg=e.target.closest('.segment'); if(!seg) return;
       if(!state.orderSelected){ state.orderSelected=seg; seg.classList.add('selected'); return; }
       if(state.orderSelected === seg){ seg.classList.remove('selected'); state.orderSelected=null; return; }
       const a=state.orderSelected, b=seg, marker=document.createElement('div');
-      list.insertBefore(marker,a); list.insertBefore(a,b); list.insertBefore(b,marker); marker.remove();
+      animateOrderChange(() => { list.insertBefore(marker,a); list.insertBefore(a,b); list.insertBefore(b,marker); marker.remove(); });
       a.classList.remove('selected'); state.orderSelected=null;
     });
     list.addEventListener('dragstart', e => { const seg=e.target.closest('.segment'); if(seg){drag=seg; seg.classList.add('selected');} });
     list.addEventListener('dragend', () => { if(drag) drag.classList.remove('selected'); drag=null; });
-    list.addEventListener('dragover', e => { e.preventDefault(); if(!drag) return; const seg=e.target.closest('.segment'); if(!seg || seg===drag) return; const box=seg.getBoundingClientRect(); const after=(e.clientY-box.top)>box.height/2; list.insertBefore(drag, after?seg.nextSibling:seg); });
+    list.addEventListener('dragover', e => {
+      e.preventDefault();
+      if(!drag) return;
+      const seg=e.target.closest('.segment');
+      if(!seg || seg===drag) return;
+      const box=seg.getBoundingClientRect();
+      const ref=(e.clientY-box.top)>box.height/2 ? seg.nextSibling : seg;
+      if(ref === drag || drag.nextSibling === ref) return;
+      animateOrderChange(() => list.insertBefore(drag, ref));
+    });
     let touchDrag=null;
     let autoSortFrame=null;
     const allowTouchSort = e => e.pointerType === 'touch' || e.pointerType === 'pen';
@@ -450,8 +493,12 @@
         const box = el.getBoundingClientRect();
         return y < box.top + box.height / 2;
       });
-      if(before) list.insertBefore(touchDrag.seg, before);
-      else list.appendChild(touchDrag.seg);
+      const ref = before || null;
+      if(ref === touchDrag.seg || touchDrag.seg.nextSibling === ref) return;
+      animateOrderChange(() => {
+        if(ref) list.insertBefore(touchDrag.seg, ref);
+        else list.appendChild(touchDrag.seg);
+      });
     };
     const runTouchAutoScroll = () => {
       autoSortFrame=null;
@@ -851,6 +898,7 @@
     if(v==='exam') examView();
     if(v==='weak') weakView();
     if(v==='settings') settingsView();
+    requestAnimationFrame(updateMobileMenuVisibility);
   }
 
   function selfTest(verbose){

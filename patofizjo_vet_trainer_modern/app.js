@@ -216,6 +216,7 @@
   function updateMobileMenuVisibility(){
     const menu = $('#mobileMenuFloat');
     if(!menu) return;
+    document.body.classList.toggle('question-modal-open', !!$('.view.active .modal-backdrop'));
     parkMobileMenu();
     menu.classList.remove('is-modal-open','is-visible');
     menu.setAttribute('aria-hidden', 'true');
@@ -369,8 +370,8 @@
     const readDone = (p.modes.base || 0) > 0;
     const root = $('#base');
     root.innerHTML = `${picker('base')}${state.baseOpen ? `<div class="modal-backdrop" id="baseModal">
+      ${modalControls('closeBase')}
       <article class="base-modal" role="dialog" aria-modal="true">
-        ${modalControls('closeBase')}
         <div class="modal-head">
           <span class="pill ${cls}">${p.score}% — ${lab}</span>
           <h3 class="question-title">${esc(it.question)}</h3>
@@ -414,8 +415,8 @@
     const root=$('#order');
     if(!state.practiceOpen.order){ root.innerHTML = picker('order'); bindPicker(root,'order'); return; }
     root.innerHTML = `${picker('order')}<div class="modal-backdrop" id="orderModal">
+      ${modalControls('closeOrder')}
       <article class="base-modal task-modal" role="dialog" aria-modal="true">
-        ${modalControls('closeOrder')}
         <div class="modal-head">
           <h3 class="question-title">${esc(it.question)}</h3>
           <p class="small">Ustaw bloki w kolejności. Możesz używać strzałek ↑ ↓, kliknąć dwa bloki aby je zamienić, albo przeciągać myszą.</p>
@@ -670,8 +671,8 @@
     const rendered = clozeTemplateHtml(cl);
     if(!state.practiceOpen.cloze){ root.innerHTML = picker('cloze'); bindPicker(root,'cloze'); return; }
     root.innerHTML = `${picker('cloze')}<div class="modal-backdrop" id="clozeModal">
+      ${modalControls('closeCloze')}
       <article class="base-modal task-modal" role="dialog" aria-modal="true">
-        ${modalControls('closeCloze')}
         <div class="modal-head"><h3 class="question-title">${esc(it.question)}</h3></div>
         <div class="cloze-text">${rendered.html}</div>
         ${clozeRevealButtons(cl, rendered.order, revealed)}
@@ -735,8 +736,8 @@
     const it=itemById(state.selectedId); const qIndex = state.mcqIndex % it.mcq.length; const q=it.mcq[qIndex]; const root=$('#mcq');
     if(!state.practiceOpen.mcq){ root.innerHTML = picker('mcq'); bindPicker(root,'mcq'); return; }
     root.innerHTML = `${picker('mcq')}<div class="modal-backdrop" id="mcqModal">
+      ${modalControls('closeMcq')}
       <article class="base-modal task-modal" role="dialog" aria-modal="true">
-        ${modalControls('closeMcq')}
         <div class="modal-head">
           <h3 class="question-title">${esc(it.question)}</h3>
           <p><b>${esc(q.prompt)}</b></p>

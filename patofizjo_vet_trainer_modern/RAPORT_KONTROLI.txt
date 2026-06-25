@@ -1,0 +1,19 @@
+RAPORT KONTROLI — PATOFIZJO VET TRAINER MODERN v2
+
+Kontrola techniczna wykonana:
+OK — app.js: kontrola składni Node.js
+OK — data.js: kontrola składni Node.js
+OK — liczba pytań w aplikacji: 108
+OK — każde pytanie ma treść pytania i pełną odpowiedź
+OK — każde pytanie ma tryb „Ułóż mechanizm” z minimum 2 blokami
+OK — każde pytanie ma tryb „Uzupełnij luki” z minimum 3 lukami
+OK — każda luka ma placeholder w tekście i odpowiedź realnie występującą w odpowiedzi danego pytania
+OK — każde pytanie ma minimum 3 zestawy ABCD
+OK — każdy zestaw ABCD ma 4 opcje i prawidłowy answerIndex
+OK — poprawna opcja ABCD pochodzi z finalnej odpowiedzi danego pytania
+OK — brak zduplikowanych opcji w zestawach ABCD
+OK — tryb układania mechanizmu działa strzałkami, klikaniem dwóch bloków oraz drag&drop
+OK — dodany autotest dostępny w aplikacji: Progres / eksport → Uruchom autotest
+
+Najważniejsza poprawka względem poprzedniej wersji:
+Poprzedni generator luk potrafił wstawić niepowiązane hasła w środek słów. To zostało usunięte. Obecnie luki są tworzone tylko z terminów faktycznie obecnych w odpowiedzi danego pytania.

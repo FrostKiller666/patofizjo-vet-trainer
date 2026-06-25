@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Patofizjo Vet Trainer — offline</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">🐾</div>
+        <div>
+          <h1>Patofizjo<span>Vet Trainer</span></h1>
+          <p>offline • egzamin • progres</p>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="active" data-view="dashboard"><span>🏠</span> Dashboard</button>
+        <button data-view="base"><span>📚</span> Pełna baza</button>
+        <button data-view="order"><span>🧩</span> Ułóż mechanizm</button>
+        <button data-view="cloze"><span>🩺</span> Uzupełnij luki</button>
+        <button data-view="mcq"><span>✅</span> ABCD</button>
+        <button data-view="exam"><span>🎓</span> Rozpocznij próbny egzamin</button>
+        <button data-view="weak"><span>🔥</span> Słabe pytania</button>
+        <button data-view="settings"><span>⚙️</span> Progres / eksport</button>
+      </nav>
+
+      <div class="side-card">
+        <div class="side-row"><span>Postęp całości</span><b id="sideProgressText">0%</b></div>
+        <div class="progress"><i id="sideProgress"></i></div>
+        <small id="sideHint">Dane zapisują się offline w tej przeglądarce.</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">patofizjologia weterynaryjna</div>
+          <h2 id="viewTitle">Dashboard</h2>
+          <p id="viewHint">Aktywna nauka: mechanizm → luki → ABCD → próbny egzamin.</p>
+        </div>
+        <div class="top-actions">
+          <button class="btn secondary" id="randomWeakBtn">🎯 Losuj słabe</button>
+          <button class="btn primary" id="examQuickBtn">🎓 Próbny egzamin</button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="view active"></section>
+      <section id="base" class="view"></section>
+      <section id="order" class="view"></section>
+      <section id="cloze" class="view"></section>
+      <section id="mcq" class="view"></section>
+      <section id="exam" class="view"></section>
+      <section id="weak" class="view"></section>
+      <section id="settings" class="view"></section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

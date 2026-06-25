@@ -428,13 +428,21 @@
     list.addEventListener('dragend', () => { if(drag) drag.classList.remove('selected'); drag=null; });
     list.addEventListener('dragover', e => { e.preventDefault(); if(!drag) return; const seg=e.target.closest('.segment'); if(!seg || seg===drag) return; const box=seg.getBoundingClientRect(); const after=(e.clientY-box.top)>box.height/2; list.insertBefore(drag, after?seg.nextSibling:seg); });
     let touchDrag=null;
+    let autoSortFrame=null;
     const allowTouchSort = e => e.pointerType === 'touch' || e.pointerType === 'pen';
-    const autoScrollTouchSort = y => {
-      const scroller = list.closest('.base-modal') || document.scrollingElement;
-      if(!scroller) return;
+    const getTouchSortScroller = () => list.closest('.base-modal') || document.scrollingElement;
+    const stopTouchAutoScroll = () => {
+      if(autoSortFrame) cancelAnimationFrame(autoSortFrame);
+      autoSortFrame=null;
+    };
+    const edgeScrollSpeed = y => {
+      const scroller = getTouchSortScroller();
+      if(!scroller) return 0;
       const box = scroller === document.scrollingElement ? {top:0,bottom:window.innerHeight} : scroller.getBoundingClientRect();
-      if(y < box.top + 58) scroller.scrollTop -= 14;
-      if(y > box.bottom - 58) scroller.scrollTop += 14;
+      const edge = 92;
+      if(y < box.top + edge) return -Math.ceil(((box.top + edge - y) / edge) * 30);
+      if(y > box.bottom - edge) return Math.ceil(((y - (box.bottom - edge)) / edge) * 30);
+      return 0;
     };
     const insertTouchSorted = y => {
       const blocks = $$('.segment', list).filter(el => el !== touchDrag.seg);
@@ -445,17 +453,43 @@
       if(before) list.insertBefore(touchDrag.seg, before);
       else list.appendChild(touchDrag.seg);
     };
+    const runTouchAutoScroll = () => {
+      autoSortFrame=null;
+      if(!touchDrag) return;
+      const scroller = getTouchSortScroller();
+      if(!scroller) return;
+      const speed = edgeScrollSpeed(touchDrag.lastY);
+      if(!speed) return;
+      const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      const next = Math.max(0, Math.min(max, scroller.scrollTop + speed));
+      if(next === scroller.scrollTop) return;
+      scroller.scrollTop = next;
+      touchDrag.moved = true;
+      insertTouchSorted(touchDrag.lastY);
+      autoSortFrame = requestAnimationFrame(runTouchAutoScroll);
+    };
+    const updateTouchSortPosition = y => {
+      if(!touchDrag) return;
+      touchDrag.lastY = y;
+      insertTouchSorted(y);
+      if(edgeScrollSpeed(y)){
+        if(!autoSortFrame) autoSortFrame = requestAnimationFrame(runTouchAutoScroll);
+      } else {
+        stopTouchAutoScroll();
+      }
+    };
     const finishTouchSort = e => {
       if(!touchDrag || e.pointerId !== touchDrag.pointerId) return;
       if(touchDrag.moved) list._suppressClickUntil = Date.now() + 350;
       touchDrag.seg.classList.remove('dragging','selected');
       list.classList.remove('touch-sorting');
       if(touchDrag.handle.releasePointerCapture) touchDrag.handle.releasePointerCapture(e.pointerId);
+      stopTouchAutoScroll();
       touchDrag=null;
       state.orderSelected=null;
     };
     const startTouchSort = (handle, seg, pointerId, y) => {
-      touchDrag={seg,handle,pointerId,startY:y,moved:false};
+      touchDrag={seg,handle,pointerId,startY:y,lastY:y,moved:false};
       $$('.segment.selected', list).forEach(x => x.classList.remove('selected'));
       seg.classList.add('dragging','selected');
       list.classList.add('touch-sorting');
@@ -465,6 +499,7 @@
       if(touchDrag.moved) list._suppressClickUntil = Date.now() + 350;
       touchDrag.seg.classList.remove('dragging','selected');
       list.classList.remove('touch-sorting');
+      stopTouchAutoScroll();
       touchDrag=null;
       state.orderSelected=null;
     };
@@ -479,8 +514,7 @@
       if(!touchDrag || e.pointerId !== touchDrag.pointerId) return;
       e.preventDefault();
       if(Math.abs(e.clientY - touchDrag.startY) > 5) touchDrag.moved = true;
-      insertTouchSorted(e.clientY);
-      autoScrollTouchSort(e.clientY);
+      updateTouchSortPosition(e.clientY);
     });
     list.addEventListener('pointerup', finishTouchSort);
     list.addEventListener('pointercancel', finishTouchSort);
@@ -495,8 +529,7 @@
       if(!touchDrag || touchDrag.pointerId !== 'mouse') return;
       e.preventDefault();
       if(Math.abs(e.clientY - touchDrag.startY) > 5) touchDrag.moved = true;
-      insertTouchSorted(e.clientY);
-      autoScrollTouchSort(e.clientY);
+      updateTouchSortPosition(e.clientY);
     });
     document.addEventListener('mouseup', finishMouseTouchSort);
   }

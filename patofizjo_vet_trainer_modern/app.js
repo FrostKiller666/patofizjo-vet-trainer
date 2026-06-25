@@ -256,10 +256,9 @@
     $('#viewTitle').textContent = viewTitles[view][0];
     $('#viewHint').textContent = viewTitles[view][1];
     renderView(view);
-    requestAnimationFrame(() => {
-      updateMobileMenuVisibility();
-      scheduleMobileViewScroll(view);
-    });
+    updateMobileMenuVisibility();
+    scheduleMobileViewScroll(view);
+    requestAnimationFrame(updateMobileMenuVisibility);
   }
 
   function tile(item){

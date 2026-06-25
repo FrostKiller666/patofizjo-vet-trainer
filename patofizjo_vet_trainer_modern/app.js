@@ -446,7 +446,8 @@
         const next = el.getBoundingClientRect();
         const dx = prev.left - next.left, dy = prev.top - next.top;
         if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-        el.getAnimations().forEach(anim => anim.cancel());
+        if(typeof el.animate !== 'function') return;
+        if(typeof el.getAnimations === 'function') el.getAnimations().forEach(anim => anim.cancel());
         el.classList.add('moving');
         const anim = el.animate([
           {transform:`translate(${dx}px, ${dy}px)`, boxShadow:'0 18px 34px rgba(37,99,235,.16)'},

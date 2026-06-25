@@ -446,8 +446,10 @@
         const next = el.getBoundingClientRect();
         const dx = prev.left - next.left, dy = prev.top - next.top;
         if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        const clearMoving = () => el.classList.remove('moving');
         if(typeof el.animate !== 'function'){
           el.classList.add('moving');
+          setTimeout(clearMoving, 380);
           el.style.transition = 'none';
           el.style.transform = `translate(${dx}px, ${dy}px)`;
           el.style.boxShadow = '0 18px 34px rgba(37,99,235,.16)';
@@ -458,19 +460,20 @@
             setTimeout(() => {
               el.style.transition = '';
               el.style.transform = '';
-              el.classList.remove('moving');
+              clearMoving();
             }, 300);
           });
           return;
         }
         if(typeof el.getAnimations === 'function') el.getAnimations().forEach(anim => anim.cancel());
         el.classList.add('moving');
+        setTimeout(clearMoving, 380);
         const anim = el.animate([
           {transform:`translate(${dx}px, ${dy}px)`, boxShadow:'0 18px 34px rgba(37,99,235,.16)'},
           {transform:'translate(0, 0)', boxShadow:''}
         ], {duration:280, easing:'cubic-bezier(.2,.8,.2,1)'});
-        anim.addEventListener('finish', () => el.classList.remove('moving'));
-        anim.addEventListener('cancel', () => el.classList.remove('moving'));
+        anim.addEventListener('finish', clearMoving);
+        anim.addEventListener('cancel', clearMoving);
       });
     };
     list.addEventListener('click', e => {

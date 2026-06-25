@@ -210,7 +210,7 @@
     const run = () => scrollCurrentViewIntoPlace(view);
     requestAnimationFrame(run);
     setTimeout(run, 80);
-    if(view === 'dashboard') setTimeout(run, 220);
+    setTimeout(run, 320);
   }
   function initMobileMenu(){
     const menu = $('#mobileMenuFloat'), toggle = $('#mobileMenuToggle'), panel = $('#mobileMenuPanel');
@@ -226,6 +226,7 @@
     panel.addEventListener('click', e => {
       const b = e.target.closest('[data-view]');
       if(!b) return;
+      b.blur();
       setView(b.dataset.view);
     });
     document.addEventListener('click', e => {
@@ -933,7 +934,7 @@
   window.__patofizjoSelfTest = () => selfTest(true);
 
   initMobileMenu();
-  $('#nav').addEventListener('click', e => { const b=e.target.closest('[data-view]'); if(b) setView(b.dataset.view); });
+  $('#nav').addEventListener('click', e => { const b=e.target.closest('[data-view]'); if(b){ b.blur(); setView(b.dataset.view); } });
   $('#examQuickBtn').onclick = () => setView('exam');
   $('#randomWeakBtn').onclick = () => { state.selectedId=randomItem('weak').id; state.baseOpen=true; setView('base'); };
   updateProgressUI(); setView('dashboard');

@@ -180,11 +180,9 @@
   function updateMobileMenuVisibility(){
     const menu = $('#mobileMenuFloat');
     if(!menu) return;
-    const sidebar = $('.sidebar');
-    const modalOpen = !!$('.modal-backdrop');
-    const pastTopNav = sidebar ? sidebar.getBoundingClientRect().bottom <= 16 : window.scrollY > 160;
-    const visible = mobileMenuMq.matches && (modalOpen || (window.scrollY > 80 && pastTopNav));
-    menu.classList.toggle('is-modal-open', mobileMenuMq.matches && modalOpen);
+    const questionModalOpen = !!$('#baseModal, #orderModal, #clozeModal, #mcqModal');
+    const visible = mobileMenuMq.matches && questionModalOpen;
+    menu.classList.toggle('is-modal-open', visible);
     menu.classList.toggle('is-visible', visible);
     menu.setAttribute('aria-hidden', visible ? 'false' : 'true');
     if(!visible) closeMobileMenu();
@@ -353,6 +351,8 @@
       </article>
     </div>` : ''}`;
     bindPicker(root,'base');
+    updateMobileMenuVisibility();
+    requestAnimationFrame(updateMobileMenuVisibility);
     if(!state.baseOpen) return;
     $('#closeBase').onclick = () => { state.baseOpen=false; fullBase(); };
     $('#baseModal').onclick = e => { if(e.target.id === 'baseModal'){ state.baseOpen=false; fullBase(); } };

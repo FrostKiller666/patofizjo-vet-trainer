@@ -192,13 +192,20 @@
   function scrollCurrentViewIntoPlace(view=state.view){
     if(!mobileMenuMq.matches) return;
     if(view === 'dashboard'){
-      window.scrollTo({top:0, behavior:'smooth'});
+      window.scrollTo({top:0, behavior:'auto'});
       return;
     }
     const topbar = $('.topbar');
     if(!topbar) return;
-    const y = Math.max(0, topbar.getBoundingClientRect().top + window.scrollY - 8);
+    const y = Math.max(0, topbar.offsetTop - 8);
     window.scrollTo({top:y, behavior:'smooth'});
+  }
+  function scheduleMobileViewScroll(view){
+    if(!mobileMenuMq.matches) return;
+    const run = () => scrollCurrentViewIntoPlace(view);
+    requestAnimationFrame(run);
+    setTimeout(run, 80);
+    if(view === 'dashboard') setTimeout(run, 220);
   }
   function initMobileMenu(){
     const menu = $('#mobileMenuFloat'), toggle = $('#mobileMenuToggle'), panel = $('#mobileMenuPanel');
@@ -245,7 +252,7 @@
     renderView(view);
     requestAnimationFrame(() => {
       updateMobileMenuVisibility();
-      scrollCurrentViewIntoPlace(view);
+      scheduleMobileViewScroll(view);
     });
   }
 

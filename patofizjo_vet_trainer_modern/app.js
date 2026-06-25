@@ -177,11 +177,25 @@
     menu.classList.remove('is-open');
     toggle.setAttribute('aria-expanded', 'false');
   }
+  function parkMobileMenu(){
+    const menu = $('#mobileMenuFloat');
+    if(menu && menu.parentElement !== document.body) document.body.appendChild(menu);
+  }
+  function placeMobileMenuInModal(modal){
+    const menu = $('#mobileMenuFloat');
+    if(menu && modal && menu.parentElement !== modal) modal.insertBefore(menu, modal.firstChild);
+  }
+  function currentQuestionModal(){
+    return $$('#baseModal, #orderModal, #clozeModal, #mcqModal')
+      .find(modal => modal.closest('.view')?.classList.contains('active'));
+  }
   function updateMobileMenuVisibility(){
     const menu = $('#mobileMenuFloat');
     if(!menu) return;
-    const questionModalOpen = !!$('#baseModal, #orderModal, #clozeModal, #mcqModal');
-    const visible = mobileMenuMq.matches && questionModalOpen;
+    const questionModal = currentQuestionModal();
+    const visible = mobileMenuMq.matches && !!questionModal;
+    if(visible) placeMobileMenuInModal(questionModal);
+    else parkMobileMenu();
     menu.classList.toggle('is-modal-open', visible);
     menu.classList.toggle('is-visible', visible);
     menu.setAttribute('aria-hidden', visible ? 'false' : 'true');
@@ -330,6 +344,7 @@
   }
 
   function fullBase(){
+    parkMobileMenu();
     const it = itemById(state.selectedId); const p=pItem(it.id); const [lab,cls]=scoreLabel(p.score);
     const readDone = (p.modes.base || 0) > 0;
     const root = $('#base');
@@ -371,6 +386,7 @@
   }
 
   function orderView(){
+    parkMobileMenu();
     const it=itemById(state.selectedId); state.orderSelected=null;
     let checked = false, patternOpen = false, penaltyApplied = false;
     let currentOrder = shuffle(it.order.map((text,i)=>({text,i})));
@@ -625,6 +641,7 @@
   }
 
   function clozeView(){
+    parkMobileMenu();
     const it=itemById(state.selectedId), cl=it.cloze; const root=$('#cloze');
     let checked = false;
     let hintUsed = false;
@@ -693,6 +710,7 @@
   }
 
   function mcqView(){
+    parkMobileMenu();
     const it=itemById(state.selectedId); const qIndex = state.mcqIndex % it.mcq.length; const q=it.mcq[qIndex]; const root=$('#mcq');
     if(!state.practiceOpen.mcq){ root.innerHTML = picker('mcq'); bindPicker(root,'mcq'); return; }
     root.innerHTML = `${picker('mcq')}<div class="modal-backdrop" id="mcqModal">

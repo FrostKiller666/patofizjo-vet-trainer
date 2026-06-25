@@ -428,7 +428,7 @@
     list.addEventListener('dragend', () => { if(drag) drag.classList.remove('selected'); drag=null; });
     list.addEventListener('dragover', e => { e.preventDefault(); if(!drag) return; const seg=e.target.closest('.segment'); if(!seg || seg===drag) return; const box=seg.getBoundingClientRect(); const after=(e.clientY-box.top)>box.height/2; list.insertBefore(drag, after?seg.nextSibling:seg); });
     let touchDrag=null;
-    const allowTouchSort = e => e.pointerType === 'touch' || e.pointerType === 'pen' || mobileMenuMq.matches;
+    const allowTouchSort = e => e.pointerType === 'touch' || e.pointerType === 'pen';
     const autoScrollTouchSort = y => {
       const scroller = list.closest('.base-modal') || document.scrollingElement;
       if(!scroller) return;
@@ -454,13 +454,24 @@
       touchDrag=null;
       state.orderSelected=null;
     };
-    list.addEventListener('pointerdown', e => {
-      const handle=e.target.closest('.handle'), seg=e.target.closest('.segment');
-      if(!handle || !seg || seg.getAttribute('draggable') === 'false' || !allowTouchSort(e)) return;
-      touchDrag={seg,handle,pointerId:e.pointerId,startY:e.clientY,moved:false};
+    const startTouchSort = (handle, seg, pointerId, y) => {
+      touchDrag={seg,handle,pointerId,startY:y,moved:false};
       $$('.segment.selected', list).forEach(x => x.classList.remove('selected'));
       seg.classList.add('dragging','selected');
       list.classList.add('touch-sorting');
+    };
+    const finishMouseTouchSort = () => {
+      if(!touchDrag || touchDrag.pointerId !== 'mouse') return;
+      if(touchDrag.moved) list._suppressClickUntil = Date.now() + 350;
+      touchDrag.seg.classList.remove('dragging','selected');
+      list.classList.remove('touch-sorting');
+      touchDrag=null;
+      state.orderSelected=null;
+    };
+    list.addEventListener('pointerdown', e => {
+      const handle=e.target.closest('.handle'), seg=e.target.closest('.segment');
+      if(!handle || !seg || seg.getAttribute('draggable') === 'false' || !allowTouchSort(e)) return;
+      startTouchSort(handle, seg, e.pointerId, e.clientY);
       if(handle.setPointerCapture) handle.setPointerCapture(e.pointerId);
       e.preventDefault();
     });
@@ -473,6 +484,21 @@
     });
     list.addEventListener('pointerup', finishTouchSort);
     list.addEventListener('pointercancel', finishTouchSort);
+    list.addEventListener('mousedown', e => {
+      if(!mobileMenuMq.matches || touchDrag) return;
+      const handle=e.target.closest('.handle'), seg=e.target.closest('.segment');
+      if(!handle || !seg || seg.getAttribute('draggable') === 'false') return;
+      startTouchSort(handle, seg, 'mouse', e.clientY);
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', e => {
+      if(!touchDrag || touchDrag.pointerId !== 'mouse') return;
+      e.preventDefault();
+      if(Math.abs(e.clientY - touchDrag.startY) > 5) touchDrag.moved = true;
+      insertTouchSorted(e.clientY);
+      autoScrollTouchSort(e.clientY);
+    });
+    document.addEventListener('mouseup', finishMouseTouchSort);
   }
   function checkOrder(it, listSel, resultSel, mode, opts={}){
     const list=$$(listSel+' .segment'); let ok=0;

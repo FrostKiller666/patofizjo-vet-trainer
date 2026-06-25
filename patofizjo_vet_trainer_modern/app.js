@@ -198,11 +198,13 @@
       document.body.scrollTop = y;
     };
     if(view === 'dashboard'){
+      $('.shell')?.scrollIntoView({block:'start', behavior:'auto'});
       go(0);
       return;
     }
     const topbar = $('.topbar');
     if(!topbar) return;
+    topbar.scrollIntoView({block:'start', behavior:'auto'});
     go(topbar.offsetTop - 8);
   }
   function scheduleMobileViewScroll(view){

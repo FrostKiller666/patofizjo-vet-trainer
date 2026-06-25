@@ -446,7 +446,23 @@
         const next = el.getBoundingClientRect();
         const dx = prev.left - next.left, dy = prev.top - next.top;
         if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-        if(typeof el.animate !== 'function') return;
+        if(typeof el.animate !== 'function'){
+          el.classList.add('moving');
+          el.style.transition = 'none';
+          el.style.transform = `translate(${dx}px, ${dy}px)`;
+          el.style.boxShadow = '0 18px 34px rgba(37,99,235,.16)';
+          requestAnimationFrame(() => {
+            el.style.transition = 'transform 280ms cubic-bezier(.2,.8,.2,1), box-shadow 280ms cubic-bezier(.2,.8,.2,1)';
+            el.style.transform = 'translate(0, 0)';
+            el.style.boxShadow = '';
+            setTimeout(() => {
+              el.style.transition = '';
+              el.style.transform = '';
+              el.classList.remove('moving');
+            }, 300);
+          });
+          return;
+        }
         if(typeof el.getAnimations === 'function') el.getAnimations().forEach(anim => anim.cancel());
         el.classList.add('moving');
         const anim = el.animate([
